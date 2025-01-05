@@ -17,6 +17,7 @@ type Config struct {
 }
 
 type Connection struct {
+	Name       string `json:"name"`
 	Host       string `json:"host"`
 	Port       int    `json:"port"`
 	RemotePath string `json:"remote_path"`
