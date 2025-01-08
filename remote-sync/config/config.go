@@ -10,7 +10,8 @@ import (
 )
 
 var (
-	Conf Config
+	Conf              Config
+	CurrentConnection int = -1
 )
 
 type Config []Connection

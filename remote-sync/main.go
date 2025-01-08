@@ -3,11 +3,13 @@ package main
 import (
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"strings"
 
 	"github.com/fogoid/remote-sync/config"
 	"github.com/neovim/go-client/nvim"
+	"golang.org/x/crypto/ssh"
 )
 
 func main() {
@@ -32,6 +34,7 @@ func main() {
 
 	// Register function with the client.
 	v.RegisterHandler("selectConnection", SelectConnection)
+	v.RegisterHandler("sayHello", CreateAndSendHello)
 
 	// Run the RPC message loop. The Serve function returns when
 	// nvim closes.
@@ -75,17 +78,42 @@ func SelectConnection(v *nvim.Nvim, args []string) error {
 	            end,
 	        },
 	        function(choice)
+                vim.g.rs_connection = choice
 	        end
 	    )
 	`
 	selectCode = fmt.Sprintf(selectCode, luaChoices)
 
-	err := v.ExecLua(selectCode, struct{}{})
+	err := v.ExecLua(selectCode, nil)
 	if err != nil {
 		return v.WriteOut("ERROR: Executing select block\n")
 	}
 
 	var userChoice string
-	v.Var("remote_sync.connection.choice", &userChoice)
+	if err = v.Var("rs_connection", &userChoice); err != nil {
+		return v.WriteOut("ERROR: getting user selected connection\n")
+	}
+
+	config.CurrentConnection = choices[userChoice]
 	return v.WriteOut(fmt.Sprintf("INFO: connection %s will be used for further syncs\n", userChoice))
+}
+
+func CreateAndSendHello(v *nvim.Nvim, args []string) error {
+	if config.CurrentConnection == -1 {
+		return v.WriteOut("No connection selected. Please select first a connection using the SelectConnection command\n")
+	}
+
+	ipConn := net.IPConn{}
+	authMethod := ssh.Password(config.Conf[config.CurrentConnection].Password)
+	clientConfig := ssh.ClientConfig{
+		User: config.Conf[config.CurrentConnection].Username,
+		Auth: []ssh.AuthMethod{authMethod},
+	}
+	address := fmt.Sprintf("%s:%d", config.Conf[config.CurrentConnection].Host, config.Conf[config.CurrentConnection].Port)
+	sshConn, newChan, reqChan, err := ssh.NewClientConn(&ipConn, address, &clientConfig)
+	if err != nil {
+		return v.WriteOut(fmt.Sprintf("ERROR: Creating client connection: %w", err))
+	}
+
+	return nil
 }
