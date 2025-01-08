@@ -6,27 +6,32 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"path"
 )
 
 var (
 	Conf Config
 )
 
-type Config struct {
-	Connections []Connection `json:"connections"`
-}
+type Config []Connection
 
 type Connection struct {
-	Name       string `json:"name"`
-	Host       string `json:"host"`
-	Port       int    `json:"port"`
-	RemotePath string `json:"remote_path"`
-	Username   string `json:"username"`
-	Password   string `json:"password"`
+	Name       string `json:"name,omitempty"`
+	Host       string `json:"host,omitempty"`
+	Port       int    `json:"port,omitempty"`
+	RemotePath string `json:"remote_path,omitempty"`
+	Username   string `json:"username,omitempty"`
+	Password   string `json:"password,omitempty"`
 }
 
-func ReadConfig(path string) error {
-	file, err := os.Open(path)
+func ReadConfig() error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		slog.Error("getting cwd")
+		return fmt.Errorf("getting cwd: %w", err)
+	}
+
+	file, err := os.Open(path.Join(cwd, ".sync.json"))
 	if err != nil {
 		slog.Error("opening file")
 		return fmt.Errorf("opening file: %w", err)

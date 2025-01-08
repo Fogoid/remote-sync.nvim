@@ -9,5 +9,5 @@ local function ensure_job()
 end
 
 vim.api.nvim_create_user_command('SelectConnection', function(args)
-  vim.fn.rpcrequest(ensure_job(), 'SelectConnection', args.fargs)
+  vim.fn.rpcrequest(ensure_job(), 'selectConnection', args.fargs)
 end, { nargs = '*' })
